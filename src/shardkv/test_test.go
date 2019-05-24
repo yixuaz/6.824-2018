@@ -1,6 +1,9 @@
 package shardkv
 
-import "linearizability"
+import (
+	"linearizability"
+	"runtime"
+)
 
 import "testing"
 import "strconv"
@@ -127,7 +130,7 @@ func TestJoinLeave(t *testing.T) {
 	}
 
 	// allow time for shards to transfer.
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	cfg.checklogs()
 	cfg.ShutdownGroup(0)
@@ -798,12 +801,12 @@ func TestChallenge1Concurrent(t *testing.T) {
 
 	fmt.Printf("  ... Passed\n")
 }
-
 //
-// optional test to see whether servers can handle
-// shards that are not affected by a config change
-// while the config change is underway
-//
+////
+//// optional test to see whether servers can handle
+//// shards that are not affected by a config change
+//// while the config change is underway
+////
 func TestChallenge2Unaffected(t *testing.T) {
 	fmt.Printf("Test: unaffected shard access (challenge 2) ...\n")
 
@@ -856,6 +859,13 @@ func TestChallenge2Unaffected(t *testing.T) {
 	// Wait to make sure clients see new config
 	<-time.After(1 * time.Second)
 
+	go func() {
+		select {
+		case <-time.After(30*time.Second):
+			DumpStacks()
+			//pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		}
+	}()
 	// And finally: check that gets/puts for 101-owned keys still complete
 	for i := 0; i < n; i++ {
 		shard := int(ka[i][0]) % 10
@@ -868,7 +878,11 @@ func TestChallenge2Unaffected(t *testing.T) {
 
 	fmt.Printf("  ... Passed\n")
 }
-
+func DumpStacks() {
+	buf := make([]byte, 163840)
+	buf = buf[:runtime.Stack(buf, true)]
+	fmt.Printf("=== BEGIN goroutine stack dump ===\n%s\n=== END goroutine stack dump ===", buf)
+}
 //
 // optional test to see whether servers can handle operations on shards that
 // have been received as a part of a config migration when the entire migration

@@ -4,98 +4,88 @@ package shardmaster
 // Shardmaster clerk.
 //
 
-import "labrpc"
+import (
+	"labrpc"
+	"sync/atomic"
+)
 import "time"
 import "crypto/rand"
 import "math/big"
 
+const RetryInterval = time.Duration(30 * time.Millisecond)
+
 type Clerk struct {
-	servers []*labrpc.ClientEnd
-	// Your data here.
+	servers    []*labrpc.ClientEnd
+	id   int64
+	seqNum int
+	lastLeader   int32
 }
 
-func nrand() int64 {
+func Nrand() int64 {
 	max := big.NewInt(int64(1) << 62)
 	bigx, _ := rand.Int(rand.Reader, max)
 	x := bigx.Int64()
 	return x
 }
 
+
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
-	// Your code here.
+	ck.id = Nrand()
+	ck.seqNum = 0
+	ck.lastLeader = 0
 	return ck
 }
 
 func (ck *Clerk) Query(num int) Config {
-	args := &QueryArgs{}
-	// Your code here.
-	args.Num = num
+	args := QueryArgs{Num: num}
 	for {
-		// try each known server.
-		for _, srv := range ck.servers {
-			var reply QueryReply
-			ok := srv.Call("ShardMaster.Query", args, &reply)
-			if ok && reply.WrongLeader == false {
-				return reply.Config
-			}
+		var reply QueryReply
+		if ck.servers[atomic.LoadInt32(&ck.lastLeader)].Call("ShardMaster.Query", &args, &reply) && !reply.WrongLeader {
+			return reply.Config
 		}
-		time.Sleep(100 * time.Millisecond)
+		atomic.StoreInt32(&ck.lastLeader,(atomic.LoadInt32(&ck.lastLeader) + 1) % int32(len(ck.servers)))
+		//ck.lastLeader = (ck.lastLeader + 1) % len(ck.servers)
+		time.Sleep(RetryInterval)
 	}
 }
 
 func (ck *Clerk) Join(servers map[int][]string) {
-	args := &JoinArgs{}
-	// Your code here.
-	args.Servers = servers
-
+	args := JoinArgs{Servers: servers, Cid:ck.id, SeqNum:ck.seqNum}
+	ck.seqNum++
 	for {
-		// try each known server.
-		for _, srv := range ck.servers {
-			var reply JoinReply
-			ok := srv.Call("ShardMaster.Join", args, &reply)
-			if ok && reply.WrongLeader == false {
-				return
-			}
+		var reply JoinReply
+		if ck.servers[atomic.LoadInt32(&ck.lastLeader)].Call("ShardMaster.Join", &args, &reply) && !reply.WrongLeader {
+			return
 		}
-		time.Sleep(100 * time.Millisecond)
+		atomic.StoreInt32(&ck.lastLeader,(atomic.LoadInt32(&ck.lastLeader) + 1) % int32(len(ck.servers)))
+		time.Sleep(RetryInterval)
 	}
 }
 
 func (ck *Clerk) Leave(gids []int) {
-	args := &LeaveArgs{}
-	// Your code here.
-	args.GIDs = gids
-
+	args := LeaveArgs{GIDs: gids, Cid:ck.id, SeqNum:ck.seqNum}
+	ck.seqNum++
 	for {
-		// try each known server.
-		for _, srv := range ck.servers {
-			var reply LeaveReply
-			ok := srv.Call("ShardMaster.Leave", args, &reply)
-			if ok && reply.WrongLeader == false {
-				return
-			}
+		var reply LeaveReply
+		if ck.servers[atomic.LoadInt32(&ck.lastLeader)].Call("ShardMaster.Leave", &args, &reply) && !reply.WrongLeader {
+			return
 		}
-		time.Sleep(100 * time.Millisecond)
+		atomic.StoreInt32(&ck.lastLeader,(atomic.LoadInt32(&ck.lastLeader) + 1) % int32(len(ck.servers)))
+		time.Sleep(RetryInterval)
 	}
 }
 
 func (ck *Clerk) Move(shard int, gid int) {
-	args := &MoveArgs{}
-	// Your code here.
-	args.Shard = shard
-	args.GID = gid
-
+	args := MoveArgs{Shard: shard, GID: gid, Cid:ck.id, SeqNum:ck.seqNum}
+	ck.seqNum++
 	for {
-		// try each known server.
-		for _, srv := range ck.servers {
-			var reply MoveReply
-			ok := srv.Call("ShardMaster.Move", args, &reply)
-			if ok && reply.WrongLeader == false {
-				return
-			}
+		var reply MoveReply
+		if ck.servers[atomic.LoadInt32(&ck.lastLeader)].Call("ShardMaster.Move", &args, &reply) && !reply.WrongLeader {
+			return
 		}
-		time.Sleep(100 * time.Millisecond)
+		atomic.StoreInt32(&ck.lastLeader,(atomic.LoadInt32(&ck.lastLeader) + 1) % int32(len(ck.servers)))
+		time.Sleep(RetryInterval)
 	}
 }
