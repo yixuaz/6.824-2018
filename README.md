@@ -4,9 +4,6 @@
 
 mit 6.824 2018 lab. 
 
-## For self-study, take care using it if u are a student
->You must write all the code you hand in for 6.824, except for code that we give you as part of the assignment. You are not allowed to look at anyone else's solution, you are not allowed to look at code from previous years, and you are not allowed to look at other Raft implementations. 
-
 https://pdos.csail.mit.edu/6.824/index.html
 
 ## Target
@@ -24,7 +21,7 @@ https://pdos.csail.mit.edu/6.824/index.html
   * lab4b server ~400 code
 
 
-### blog writen in chinese
+## Blog [chinese]
 
 [how to set up environment for lab](https://www.jianshu.com/p/ee235c2b8f3d)
 
@@ -48,3 +45,6 @@ https://pdos.csail.mit.edu/6.824/index.html
   - [x] [Challenge 2]Client requests during configuration changes
   * [lab 4a study note](https://www.jianshu.com/p/6e8d33c3c799)
   * [lab 4b study note](https://www.jianshu.com/p/f5c8ab9cd577)
+  
+  ## For self-study, take care using it if u are a student
+>You must write all the code you hand in for 6.824, except for code that we give you as part of the assignment. You are not allowed to look at anyone else's solution, you are not allowed to look at code from previous years, and you are not allowed to look at other Raft implementations. 
